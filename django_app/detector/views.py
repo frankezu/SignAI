@@ -3,7 +3,7 @@ from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 import cv2
-import mediapipe as mp
+# import mediapipe as mp  # Comentado temporalmente debido a incompatibilidad con Python 3.13
 from ultralytics import YOLO
 import threading
 import json
@@ -12,6 +12,8 @@ import random
 import os
 import glob
 from datetime import datetime, timedelta
+from collections import deque
+import numpy as np
 
 class SignDetector:
     def __init__(self):
@@ -34,6 +36,17 @@ class SignDetector:
         self.auto_advance_duration = 5  # 5 segundos de detección correcta para avanzar
         self.last_detected_letter = None
         self.should_auto_advance = False
+        
+        # Buffer para suavizar predicciones (del modelo mejorado)
+        self.prediction_buffer = deque(maxlen=5)
+        
+        # Variables de rendimiento
+        self.frame_count = 0
+        self.fps_start_time = time.time()
+        self.current_fps = 0
+        
+        # ROI dinámico basado en mano detectada
+        self.roi_buffer = deque(maxlen=3)
         
         self.load_reference_images()
         
@@ -92,26 +105,117 @@ class SignDetector:
         if letter in self.reference_images and self.reference_images[letter]:
             return random.choice(self.reference_images[letter])
         return None
+    
+    def get_hand_roi(self, frame, hand_landmarks):
+        """Extrae región de interés basada en landmarks de la mano"""
+        h, w = frame.shape[:2]
+        
+        # Obtener coordenadas de todos los landmarks
+        x_coords = [lm.x * w for lm in hand_landmarks.landmark]
+        y_coords = [lm.y * h for lm in hand_landmarks.landmark]
+        
+        # Calcular bounding box con padding
+        x_min, x_max = int(min(x_coords)), int(max(x_coords))
+        y_min, y_max = int(min(y_coords)), int(max(y_coords))
+        
+        # Añadir padding (20% extra)
+        padding_x = int((x_max - x_min) * 0.2)
+        padding_y = int((y_max - y_min) * 0.2)
+        
+        x_min = max(0, x_min - padding_x)
+        y_min = max(0, y_min - padding_y)
+        x_max = min(w, x_max + padding_x)
+        y_max = min(h, y_max + padding_y)
+        
+        return (x_min, y_min, x_max, y_max)
+    
+    def smooth_prediction(self, letter, confidence):
+        """Suaviza predicciones usando un buffer"""
+        self.prediction_buffer.append((letter, confidence))
+        
+        # Si tenemos suficientes predicciones
+        if len(self.prediction_buffer) >= 3:
+            # Contar ocurrencias de cada letra
+            letter_counts = {}
+            
+            for pred_letter, pred_conf in self.prediction_buffer:
+                if pred_letter not in letter_counts:
+                    letter_counts[pred_letter] = {'count': 0, 'total_conf': 0}
+                letter_counts[pred_letter]['count'] += 1
+                letter_counts[pred_letter]['total_conf'] += pred_conf
+            
+            # Encontrar la letra más frecuente
+            best_letter = max(letter_counts.keys(), 
+                            key=lambda x: letter_counts[x]['count'])
+            avg_conf = letter_counts[best_letter]['total_conf'] / letter_counts[best_letter]['count']
+            
+            return best_letter, avg_conf
+        
+        return letter, confidence
+    
+    def calculate_fps(self):
+        """Calcula FPS en tiempo real"""
+        self.frame_count += 1
+        if self.frame_count % 10 == 0:  # Actualizar cada 10 frames
+            current_time = time.time()
+            elapsed = current_time - self.fps_start_time
+            self.current_fps = 10 / elapsed
+            self.fps_start_time = current_time
+    
+    def draw_info_panel(self, frame, letter=None, confidence=None, hand_detected=False):
+        """Dibuja panel de información"""
+        h, w = frame.shape[:2]
+        
+        # Panel de fondo
+        cv2.rectangle(frame, (10, 10), (300, 100), (0, 0, 0), -1)
+        cv2.rectangle(frame, (10, 10), (300, 100), (255, 255, 255), 2)
+        
+        # Información
+        cv2.putText(frame, f"FPS: {self.current_fps:.1f}", 
+                   (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        
+        status = "MANO DETECTADA" if hand_detected else "SIN MANO"
+        color = (0, 255, 0) if hand_detected else (0, 0, 255)
+        cv2.putText(frame, f"Estado: {status}", 
+                   (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+        
+        if letter and confidence:
+            cv2.putText(frame, f"Letra: {letter} ({confidence:.1%})", 
+                       (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    
+    def draw_info_panel_simplified(self, frame, letter=None, confidence=None):
+        """Dibuja panel de información simplificado sin detección de mano"""
+        h, w = frame.shape[:2]
+        
+        # Panel de fondo
+        cv2.rectangle(frame, (10, 10), (300, 80), (0, 0, 0), -1)
+        cv2.rectangle(frame, (10, 10), (300, 80), (255, 255, 255), 2)
+        
+        # Información
+        cv2.putText(frame, f"FPS: {self.current_fps:.1f}", 
+                   (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        
+        cv2.putText(frame, "Modo: Solo YOLO", 
+                   (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+        
+        if letter and confidence:
+            cv2.putText(frame, f"Letra: {letter} ({confidence:.1%})", 
+                       (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
     def initialize(self):
-        """Inicializar el modelo y MediaPipe"""
+        """Inicializar el modelo YOLO"""
         try:
             # Cargar modelo YOLO
             self.model = YOLO(settings.MODEL_PATH)
-            
-            # MediaPipe para filtrar
-            self.mp_hands = mp.solutions.hands
-            self.hands = self.mp_hands.Hands(
-                static_image_mode=False,
-                max_num_hands=1,
-                min_detection_confidence=0.6,
-                min_tracking_confidence=0.3
-            )
             
             # Configurar cámara
             self.cap = cv2.VideoCapture(0)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)  # Limitar FPS de captura
+            
+            print("Modelo YOLO cargado exitosamente")
+            print("NOTA: MediaPipe no disponible en Python 3.13, usando solo YOLO")
             
             return True
         except Exception as e:
@@ -119,10 +223,11 @@ class SignDetector:
             return False
     
     def process_frame(self, frame):
-        """Procesar un frame con detección de señas"""
+        """Procesar un frame completo con el modelo mejorado (sin MediaPipe)"""
+        # Voltear frame
         frame = cv2.flip(frame, 1)
         
-        # Modo entrenamiento
+        # Modo entrenamiento - mostrar información
         if self.training_mode and self.target_letter and self.training_start_time:
             # Calcular tiempo restante
             elapsed_time = time.time() - self.training_start_time
@@ -138,88 +243,87 @@ class SignDetector:
                 self.target_letter = None
                 self.training_start_time = None
         
-        # Verificar si hay mano
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_results = self.hands.process(rgb_frame)
-        hand_present = mp_results.multi_hand_landmarks is not None
+        current_letter = None
+        current_confidence = None
         
-        # YOLO solo si hay mano
-        if hand_present:
-            results = self.model.predict(
-                source=frame,
-                conf=0.4,
-                verbose=False,
-                stream=False
-            )
-            
-            # Procesar detecciones
-            detected_letter = None
-            best_confidence = 0
-            
-            for result in results:
-                if result.boxes is not None:
-                    for box in result.boxes:
-                        # Obtener datos del bbox
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        conf = float(box.conf[0])
+        # Aplicar YOLO directamente al frame completo
+        results = self.model.predict(
+            source=frame,
+            conf=0.3,  # Confianza más baja para captar más detecciones
+            verbose=False,
+            stream=False
+        )
+        
+        # Procesar detecciones
+        best_detection = None
+        best_conf = 0
+        
+        for result in results:
+            if result.boxes is not None:
+                for box in result.boxes:
+                    conf = float(box.conf[0])
+                    if conf > best_conf:
+                        best_conf = conf
                         cls = int(box.cls[0])
                         letter = self.model.names[cls]
                         
-                        # Solo mostrar si confianza es buena
-                        if conf > 0.4:
-                            # Convertir a enteros
-                            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                            
-                            # Color del bbox
-                            color = (0, 255, 0) if conf > 0.7 else (0, 255, 255)
-                            
-                            # En modo entrenamiento, cambiar color si coincide con letra objetivo
-                            if self.training_mode and self.target_letter and letter == self.target_letter:
-                                color = (0, 255, 0)  # Verde para letra correcta
-                                if conf > best_confidence:
-                                    detected_letter = letter
-                                    best_confidence = conf
-                            elif self.training_mode and self.target_letter and letter != self.target_letter:
-                                color = (0, 0, 255)  # Rojo para letra incorrecta
-                            
-                            # Dibujar bounding box
-                            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                            
-                            # Preparar texto
-                            label = f"{letter} {conf:.1%}"
-                            
-                            # Calcular tamaño del texto
-                            font = cv2.FONT_HERSHEY_SIMPLEX
-                            font_scale = 0.8
-                            thickness = 2
-                            (text_w, text_h), baseline = cv2.getTextSize(label, font, font_scale, thickness)
-                            
-                            # Posición del texto (arriba del bbox)
-                            text_x = x1
-                            text_y = y1 - 10
-                            
-                            # Si el texto se sale arriba, ponerlo abajo
-                            if text_y < text_h:
-                                text_y = y2 + text_h + 10
-                            
-                            # Fondo para el texto
-                            cv2.rectangle(frame, 
-                                         (text_x, text_y - text_h - 5), 
-                                         (text_x + text_w + 5, text_y + 5), 
-                                         color, -1)
-                            
-                            # Texto en negro
-                            cv2.putText(frame, label, (text_x + 2, text_y), 
-                                       font, font_scale, (0, 0, 0), thickness)
+                        # Coordenadas del bounding box
+                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                        
+                        best_detection = {
+                            'letter': letter,
+                            'confidence': conf,
+                            'bbox': (x1, y1, x2, y2)
+                        }
+        
+        # Dibujar mejor detección
+        if best_detection and best_detection['confidence'] > 0.4:
+            # Suavizar predicción
+            smooth_letter, smooth_conf = self.smooth_prediction(
+                best_detection['letter'], 
+                best_detection['confidence']
+            )
             
-            # En modo entrenamiento, mostrar feedback y manejar auto-avance
+            current_letter = smooth_letter
+            current_confidence = smooth_conf
+            
+            # Dibujar bounding box
+            x1, y1, x2, y2 = best_detection['bbox']
+            color = (0, 255, 0) if smooth_conf > 0.7 else (0, 255, 255)
+            
+            # En modo entrenamiento, cambiar color según corrección
+            if self.training_mode and self.target_letter:
+                if smooth_letter == self.target_letter:
+                    color = (0, 255, 0)  # Verde para letra correcta
+                else:
+                    color = (0, 0, 255)  # Rojo para letra incorrecta
+            
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+            
+            # Etiqueta mejorada
+            label = f"{smooth_letter} {smooth_conf:.1%}"
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 1.0
+            thickness = 2
+            
+            (text_w, text_h), _ = cv2.getTextSize(label, font, font_scale, thickness)
+            
+            # Fondo del texto
+            cv2.rectangle(frame, (x1, y1 - text_h - 10), 
+                         (x1 + text_w + 10, y1), color, -1)
+            
+            # Texto
+            cv2.putText(frame, label, (x1 + 5, y1 - 5), 
+                       font, font_scale, (0, 0, 0), thickness)
+            
+            # Lógica de modo entrenamiento
             if self.training_mode and self.target_letter:
                 current_time = time.time()
                 
-                if detected_letter == self.target_letter and best_confidence > 0.6:
+                if smooth_letter == self.target_letter and smooth_conf > 0.6:
                     # Detección correcta
                     if self.correct_detection_start is None:
-                        # Primera vez que detecta correctamente
                         self.correct_detection_start = current_time
                     
                     # Calcular tiempo de detección correcta
@@ -229,7 +333,7 @@ class SignDetector:
                     # Mostrar mensaje de correcto con countdown
                     if remaining_time > 0:
                         msg = f"CORRECTO! Siguiente en: {remaining_time:.1f}s"
-                        text_x = max(10, frame.shape[1]//2 - 200)  # Posición segura
+                        text_x = max(10, frame.shape[1]//2 - 200)
                         cv2.putText(frame, msg, 
                                    (text_x, 100), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
@@ -237,24 +341,36 @@ class SignDetector:
                         # Han pasado 5 segundos, marcar para auto-avance
                         self.should_auto_advance = True
                         msg = "¡Perfecto! Cambiando letra..."
-                        text_x = max(10, frame.shape[1]//2 - 150)  # Posición segura
+                        text_x = max(10, frame.shape[1]//2 - 150)
                         cv2.putText(frame, msg, 
                                    (text_x, 100), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                 else:
-                    # Detección incorrecta o no hay detección
+                    # Detección incorrecta
                     self.correct_detection_start = None
                     
-                    if detected_letter and detected_letter != self.target_letter and len(detected_letter) == 1 and detected_letter.isalpha():
-                        # Asegurar que tenemos una letra válida y posición segura
-                        msg = f"Incorrecto. Haces: {detected_letter.upper()}"
-                        text_y = max(frame.shape[0] - 50, 50)  # Posición segura
+                    if smooth_letter and smooth_letter != self.target_letter:
+                        msg = f"Incorrecto. Haces: {smooth_letter.upper()}"
+                        text_y = max(frame.shape[0] - 50, 50)
                         cv2.putText(frame, msg, 
                                    (10, text_y), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                 
-                # Almacenar la última letra detectada para referencia
-                self.last_detected_letter = detected_letter
+                # Almacenar la última letra detectada
+                self.last_detected_letter = smooth_letter
+        else:
+            # Limpiar buffer si no hay detección
+            self.prediction_buffer.clear()
+            
+            # Resetear estado de entrenamiento si no hay detección
+            if self.training_mode:
+                self.correct_detection_start = None
+        
+        # Dibujar panel de información (versión simplificada sin hand_detected)
+        self.draw_info_panel_simplified(frame, current_letter, current_confidence)
+        
+        # Calcular FPS
+        self.calculate_fps()
         
         return frame
     
@@ -295,9 +411,6 @@ class SignDetector:
             if self.cap:
                 self.cap.release()
                 self.cap = None
-            if self.hands:
-                self.hands.close()
-                self.hands = None
 
 # Instancia global del detector
 detector = SignDetector()
