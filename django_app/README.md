@@ -1,104 +1,151 @@
-# 🤟 Detector de Lenguaje de Señas - Django Web App
+# Detector de Lengua de Señas Chilena - Aplicación Web Django
 
-## 📋 Instrucciones de Instalación y Ejecución
+Esta aplicación web permite la detección en tiempo real de señas del alfabeto chileno usando tu modelo YOLO entrenado.
 
-### 1. Navegar al directorio de Django
-```cmd
-cd django_app
-```
+## Características
 
-### 2. Instalar dependencias (opcional - ya están en tu .venv)
-```cmd
-pip install -r requirements.txt
-```
+- 🎯 **Detección en tiempo real** usando YOLO + MediaPipe
+- 🤖 **Optimización inteligente** - Solo procesa cuando detecta una mano
+- 🌐 **Interfaz web moderna** y responsive
+- ⚡ **Alto rendimiento** con streaming de video
+- 🎨 **Visualización clara** con bounding boxes y porcentajes de confianza
 
-### 3. Realizar migraciones de Django
-```cmd
-python manage.py makemigrations
-python manage.py migrate
-```
+## Requisitos del Sistema
 
-### 4. Ejecutar el servidor de desarrollo
-```cmd
-python manage.py runserver
-```
+- Python 3.8 o superior
+- Cámara web funcional
+- Modelo entrenado en `runs/detect/train/weights/best.pt`
 
-### 5. Abrir en navegador
-- Ve a: http://127.0.0.1:8000
-- O: http://localhost:8000
+## Instalación
 
-## 🚀 Características de la App Web
+1. **Navegar al directorio de la aplicación:**
+   ```bash
+   cd django_app
+   ```
 
-✅ **Interfaz web moderna** con gradientes y efectos glassmorphism
-✅ **Detección en tiempo real** usando YOLO + MediaPipe
-✅ **Streaming de video** directo en el navegador
-✅ **Control de cámara** (iniciar/detener) desde la web
-✅ **Visualización en vivo** de letra detectada y confianza
-✅ **Grid del alfabeto** que resalta la letra actual
-✅ **Estadísticas en tiempo real** (FPS, tiempo activo, contadores)
-✅ **Diseño responsive** para móvil y desktop
-✅ **No requiere OpenCV window** - todo en el navegador
+2. **Crear un entorno virtual (recomendado):**
+   ```bash
+   python -m venv venv
+   venv\Scripts\activate  # En Windows
+   # source venv/bin/activate  # En Linux/Mac
+   ```
 
-## 🔧 Estructura del Proyecto
+3. **Instalar dependencias:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Aplicar migraciones de Django:**
+   ```bash
+   python manage.py migrate
+   ```
+
+## Uso
+
+1. **Iniciar el servidor de desarrollo:**
+   ```bash
+   python manage.py runserver
+   ```
+
+2. **Abrir el navegador y visitar:**
+   ```
+   http://127.0.0.1:8000/
+   ```
+
+3. **Usar la aplicación:**
+   - Haz clic en "Iniciar Detector"
+   - Permite el acceso a la cámara si el navegador lo solicita
+   - Coloca tu mano frente a la cámara
+   - Realiza señas del alfabeto chileno
+   - Observa las detecciones en tiempo real
+
+## Estructura del Proyecto
 
 ```
 django_app/
-├── manage.py                   # Script principal de Django
-├── requirements.txt           # Dependencias
-├── sign_language_detector/    # Configuración principal
-│   ├── settings.py           # Configuración Django
-│   ├── urls.py              # URLs principales
-│   └── wsgi.py              # WSGI para producción
-└── detector/                 # App de detección
-    ├── detector_service.py   # Tu código YOLO+MediaPipe adaptado
-    ├── views.py             # Vistas Django (API endpoints)
-    ├── urls.py              # URLs de la app
-    └── templates/
-        └── index.html       # Interfaz web principal
+├── manage.py
+├── requirements.txt
+├── sign_detector/          # Configuración principal de Django
+│   ├── __init__.py
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── detector/               # Aplicación del detector
+│   ├── __init__.py
+│   ├── apps.py
+│   ├── views.py           # Lógica principal del detector
+│   ├── urls.py
+│   ├── models.py
+│   ├── admin.py
+│   └── tests.py
+└── templates/
+    └── detector/
+        └── index.html     # Interfaz web principal
 ```
 
-## 🎮 Cómo Usar
+## Funcionamiento Técnico
 
-1. **Abrir la página web** en tu navegador
-2. **Clic en "Iniciar Detección"** para activar la cámara
-3. **Mostrar señas** con tu mano frente a la cámara
-4. **Ver resultados** en tiempo real:
-   - Letra detectada (grande)
-   - Porcentaje de confianza
-   - Grid alfabético resaltado
-   - Estadísticas en vivo
-5. **Clic en "Detener"** para parar la detección
+### Backend (Django)
+- **SignDetector Class**: Maneja la inicialización del modelo YOLO y MediaPipe
+- **Video Streaming**: Utiliza `StreamingHttpResponse` para transmisión en tiempo real
+- **API Endpoints**: 
+  - `/video_feed/` - Stream de video procesado
+  - `/start_detection/` - Iniciar detección
+  - `/stop_detection/` - Detener detección
 
-## 🔧 Personalización
+### Frontend
+- **Interfaz Responsive**: Adaptable a diferentes tamaños de pantalla
+- **Control de Estado**: Manejo inteligente de botones y estado de la aplicación
+- **Visualización en Tiempo Real**: Muestra el video con detecciones superpuestas
 
-- **Confianza mínima**: Cambiar en `detector_service.py` línea con `conf=0.5`
-- **Resolución**: Modificar en `detector_service.py` las líneas `CAP_PROP_FRAME_WIDTH/HEIGHT`
-- **Colores/Estilos**: Editar CSS en `templates/index.html`
-- **Suavizado**: Ajustar `maxlen` del deque en `detector_service.py`
+### Proceso de Detección
+1. **Captura de Frame**: La cámara captura frames a 30 FPS
+2. **Filtrado MediaPipe**: Solo procesa frames donde se detecta una mano
+3. **Inferencia YOLO**: Predice la seña cuando hay una mano presente
+4. **Post-procesamiento**: Dibuja bounding boxes y etiquetas
+5. **Streaming**: Envía el frame procesado al navegador
 
-## ⚠️ Notas Importantes
+## Personalización
 
-- Asegúrate de que el modelo esté en: `../runs/detect/train/weights/best.pt`
-- La cámara se detecta automáticamente (índice 0)
-- El servidor debe ejecutarse desde la carpeta `django_app`
-- Usa Ctrl+C para detener el servidor Django
-
-## 🚨 Solución de Problemas
-
-**Error "No module named 'django'":**
-```cmd
-pip install django
+### Ajustar Confianza
+En `detector/views.py`, línea ~45:
+```python
+conf=0.4,  # Cambiar este valor (0.1 - 1.0)
 ```
 
-**Error de modelo no encontrado:**
-- Verifica que `runs/detect/train/weights/best.pt` existe
-- Ajusta la ruta en `settings.py` si es necesario
-
-**Cámara no funciona:**
-- Verifica permisos de cámara en el navegador
-- Revisa que no haya otra app usando la cámara
-
-**Error de puertos:**
-```cmd
-python manage.py runserver 8001
+### Modificar Colores
+En `detector/views.py`, líneas ~65-66:
+```python
+color = (0, 255, 0) if conf > 0.7 else (0, 255, 255)  # Verde/Amarillo
 ```
+
+### Cambiar Resolución
+En `detector/views.py`, líneas ~32-33:
+```python
+self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)   # Ancho
+self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # Alto
+```
+
+## Solución de Problemas
+
+### Error: "No se puede cargar el modelo"
+- Verifica que el archivo `runs/detect/train/weights/best.pt` existe
+- Asegúrate de que la ruta en `settings.py` es correcta
+
+### Error: "No se puede acceder a la cámara"
+- Verifica que la cámara no esté siendo usada por otra aplicación
+- En algunos navegadores, necesitas HTTPS para acceso a cámara
+
+### Rendimiento lento
+- Reduce la resolución de video
+- Aumenta el threshold de confianza
+- Verifica que MediaPipe esté filtrando correctamente
+
+## Licencia
+
+Este proyecto utiliza el modelo YOLO entrenado específicamente para lengua de señas chilena.
+
+## Soporte
+
+Para problemas técnicos o preguntas sobre el modelo, consulta la documentación del proyecto principal.

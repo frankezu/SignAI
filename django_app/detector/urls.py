@@ -3,14 +3,12 @@ from . import views
 
 urlpatterns = [
     path('', views.index, name='index'),
-    path('start/', views.start_detection, name='start_detection'),
-    path('stop/', views.stop_detection, name='stop_detection'),
-    path('detection-data/', views.get_detection_data, name='get_detection_data'),
-    path('video-feed/', views.video_feed, name='video_feed'),
-    path('toggle-detection/', views.toggle_detection, name='toggle_detection'),
-    path('test-camera/', views.test_camera, name='test_camera'),
-    path('test-model/', views.test_model, name='test_model'),
-    path('start-training/', views.start_training, name='start_training'),
-    path('stop-training/', views.stop_training, name='stop_training'),
-    path('training-feedback/', views.get_training_feedback, name='training_feedback'),
+    path('video_feed/', views.video_feed, name='video_feed'),
+    path('start_detection/', views.start_detection, name='start_detection'),
+    path('stop_detection/', views.stop_detection, name='stop_detection'),
+    path('start_training/', views.start_training, name='start_training'),
+    path('stop_training/', views.stop_training, name='stop_training'),
+    path('check_auto_advance/', views.check_auto_advance, name='check_auto_advance'),
+    path('get_random_letter/', views.get_random_letter, name='get_random_letter'),
+    path('reference_image/<str:letter>/<str:filename>', views.serve_reference_image, name='serve_reference_image'),
 ]

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Lengua de Señas Chilena</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+
+        .mode-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .content-wrapper {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .video-section {
+            flex: 1;
+            max-width: 700px;
+        }
+
+        .training-section {
+            flex: 0 0 350px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            display: none;
+        }
+
+        .training-section.active {
+            display: block;
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        }
+
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .training-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .training-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        .target-letter {
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            color: #4facfe;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            color: #ff4b2b;
+            margin: 15px 0;
+        }
+
+        .reference-image {
+            width: 100%;
+            max-width: 250px;
+            height: auto;
+            border-radius: 10px;
+            margin: 15px auto;
+            display: block;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .training-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .training-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .training-info h4 {
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+
+        .training-info p {
+            color: #424242;
+            line-height: 1.5;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 968px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            .training-section {
+                flex: none;
+                max-width: none;
+            }
+            
+            .mode-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Detector de Lengua de Señas Chilena</h1>
+            <p>Detección en tiempo real de señas del alfabeto chileno usando inteligencia artificial</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Selector de modo -->
+            <div class="mode-selector">
+                <button class="mode-btn active" id="detectionModeBtn" onclick="switchMode('detection')">
+                    Modo Detección
+                </button>
+                <button class="mode-btn" id="trainingModeBtn" onclick="switchMode('training')">
+                    Modo Entrenamiento
+                </button>
+            </div>
+
+            <div class="content-wrapper">
+                <!-- Sección de video -->
+                <div class="video-section">
+                    <div class="video-container">
+                        <img id="videoFeed" src="{% url 'video_feed' %}" alt="Video Feed">
+                    </div>
+
+                    <!-- Controles principales -->
+                    <div class="controls">
+                        <button class="btn success" id="startBtn" onclick="startDetection()">
+                            Iniciar Cámara
+                        </button>
+                        <button class="btn danger" id="stopBtn" onclick="stopDetection()" disabled>
+                            Detener Cámara
+                        </button>
+                    </div>
+
+                    <!-- Estado del sistema -->
+                    <div id="status" class="status" style="display: none;"></div>
+                </div>
+
+                <!-- Sección de entrenamiento -->
+                <div class="training-section" id="trainingSection">
+                    <div class="training-info">
+                        <h4>🎯 Modo Entrenamiento</h4>
+                        <p>• Se te mostrará una letra para practicar</p>
+                        <p>• Haz la seña correcta por 5 segundos para avanzar automáticamente</p>
+                        <p>• Tienes 10 segundos máximo por letra</p>
+                        <p>• La cámara te dirá si es correcta y cuánto tiempo falta</p>
+                        <p>• Usa la imagen de referencia como guía</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Letra a practicar:</h3>
+                        <div class="target-letter" id="targetLetter">-</div>
+                        <div class="timer" id="trainingTimer" style="display: none;">10.0s</div>
+                        
+                        <img id="referenceImage" class="reference-image" style="display: none;" alt="Imagen de referencia">
+                        
+                        <div class="training-controls">
+                            <button class="btn success" id="startTrainingBtn" onclick="startRandomTraining()">
+                                Letra Aleatoria
+                            </button>
+                            <button class="btn danger" id="stopTrainingBtn" onclick="stopTraining()" style="display: none;">
+                                Parar Entrenamiento
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isDetectionRunning = false;
+        let isTrainingMode = false;
+        let isTrainingActive = false;
+        let trainingTimer = null;
+        let autoAdvanceChecker = null; // Para verificar auto-avance
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            // Diferentes duraciones según el tipo de mensaje
+            let duration = 3000; // por defecto 3 segundos
+            
+            if (type === 'warning' && message.includes('Tiempo terminado')) {
+                duration = 5000; // 5 segundos para mensajes de tiempo terminado
+            } else if (type === 'info') {
+                duration = 4000; // 4 segundos para mensajes informativos
+            } else if (type === 'error') {
+                duration = 6000; // 6 segundos para errores
+            }
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, duration);
+        }
+
+        function switchMode(mode) {
+            const detectionBtn = document.getElementById('detectionModeBtn');
+            const trainingBtn = document.getElementById('trainingModeBtn');
+            const trainingSection = document.getElementById('trainingSection');
+
+            if (mode === 'detection') {
+                detectionBtn.classList.add('active');
+                trainingBtn.classList.remove('active');
+                trainingSection.classList.remove('active');
+                isTrainingMode = false;
+                
+                // Detener entrenamiento si está activo
+                if (isTrainingActive) {
+                    stopTraining();
+                }
+            } else {
+                trainingBtn.classList.add('active');
+                detectionBtn.classList.remove('active');
+                trainingSection.classList.add('active');
+                isTrainingMode = true;
+            }
+        }
+
+        async function startDetection() {
+            try {
+                const response = await fetch('/start_detection/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    isDetectionRunning = true;
+                    showStatus('Detección iniciada correctamente', 'success');
+                } else {
+                    showStatus('Error al iniciar la detección', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error de conexión', 'error');
+            }
+        }
+
+        async function stopDetection() {
+            try {
+                // Primero detener entrenamiento si está activo
+                if (isTrainingActive) {
+                    await stopTraining();
+                }
+
+                const response = await fetch('/stop_detection/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    isDetectionRunning = false;
+                    showStatus('Detección detenida', 'warning');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error al detener la detección', 'error');
+            }
+        }
+
+        async function startRandomTraining() {
+            try {
+                // Prevenir múltiples inicios
+                if (isTrainingActive) {
+                    // Detener el entrenamiento actual primero
+                    await stopTraining();
+                    // Esperar un poco antes de iniciar el nuevo
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                // Obtener letra aleatoria
+                const letterResponse = await fetch('/get_random_letter/');
+                const letterData = await letterResponse.json();
+                
+                if (!letterData.letter) {
+                    showStatus('Error al obtener letra aleatoria', 'error');
+                    return;
+                }
+
+                // Asegurar que la cámara está iniciada
+                if (!isDetectionRunning) {
+                    await startDetection();
+                    // Esperar un poco para que se inicie
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                // Iniciar entrenamiento
+                const trainingResponse = await fetch('/start_training/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        letter: letterData.letter
+                    })
+                });
+
+                const trainingData = await trainingResponse.json();
+                
+                if (trainingData.success) {
+                    isTrainingActive = true;
+                    
+                    // Actualizar UI
+                    document.getElementById('targetLetter').textContent = letterData.letter;
+                    document.getElementById('startTrainingBtn').style.display = 'none';
+                    document.getElementById('stopTrainingBtn').style.display = 'block';
+                    document.getElementById('trainingTimer').style.display = 'block';
+                    
+                    // Mostrar imagen de referencia si está disponible
+                    const refImage = document.getElementById('referenceImage');
+                    if (letterData.reference_image) {
+                        refImage.src = letterData.reference_image;
+                        refImage.style.display = 'block';
+                    } else {
+                        refImage.style.display = 'none';
+                    }
+
+                    // Iniciar temporizador y auto-avance checker
+                    startTrainingTimer(trainingData.duration || 10);
+                    startAutoAdvanceChecker();
+                    
+                    showStatus(`¡Entrena la letra ${letterData.letter}! Haz la seña por 5 segundos para avanzar`, 'success');
+                } else {
+                    showStatus('Error al iniciar entrenamiento', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error de conexión', 'error');
+            }
+        }
+
+        async function stopTraining() {
+            try {
+                // Prevenir múltiples llamadas
+                if (!isTrainingActive) {
+                    return;
+                }
+
+                const response = await fetch('/stop_training/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (trainingTimer) {
+                    clearInterval(trainingTimer);
+                    trainingTimer = null;
+                }
+
+                if (autoAdvanceChecker) {
+                    clearInterval(autoAdvanceChecker);
+                    autoAdvanceChecker = null;
+                }
+
+                isTrainingActive = false;
+                
+                // Restaurar UI
+                document.getElementById('targetLetter').textContent = '-';
+                document.getElementById('startTrainingBtn').style.display = 'block';
+                document.getElementById('stopTrainingBtn').style.display = 'none';
+                document.getElementById('trainingTimer').style.display = 'none';
+                document.getElementById('referenceImage').style.display = 'none';
+                
+                showStatus('Entrenamiento detenido', 'warning');
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error al detener entrenamiento', 'error');
+            }
+        }
+
+        async function checkAutoAdvance() {
+            try {
+                // Solo verificar si el entrenamiento está activo
+                if (!isTrainingActive) {
+                    return;
+                }
+
+                const response = await fetch('/check_auto_advance/', {
+                    method: 'GET',
+                });
+
+                const data = await response.json();
+                
+                if (data.should_advance && isTrainingActive) {
+                    // Auto-avanzar a la siguiente letra
+                    showStatus('¡Perfecto! Cambiando a nueva letra...', 'success');
+                    
+                    // Detener checker temporalmente para evitar múltiples llamadas
+                    if (autoAdvanceChecker) {
+                        clearInterval(autoAdvanceChecker);
+                        autoAdvanceChecker = null;
+                    }
+                    
+                    // Detener temporizador si existe para evitar conflictos
+                    if (trainingTimer) {
+                        clearInterval(trainingTimer);
+                        trainingTimer = null;
+                    }
+                    
+                    // Pequeña pausa antes de cambiar
+                    setTimeout(async () => {
+                        if (isTrainingActive) {
+                            await startRandomTraining();
+                        }
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Error verificando auto-avance:', error);
+            }
+        }
+
+        function startAutoAdvanceChecker() {
+            // Detener checker anterior si existe
+            if (autoAdvanceChecker) {
+                clearInterval(autoAdvanceChecker);
+            }
+            // Verificar cada 1000ms si hay auto-avance pendiente
+            autoAdvanceChecker = setInterval(checkAutoAdvance, 1000);
+        }
+
+        function startTrainingTimer(duration) {
+            let timeLeft = duration;
+            const timerElement = document.getElementById('trainingTimer');
+            
+            trainingTimer = setInterval(() => {
+                if (!isTrainingActive) {
+                    clearInterval(trainingTimer);
+                    trainingTimer = null;
+                    return;
+                }
+                
+                timerElement.textContent = `${timeLeft.toFixed(1)}s`;
+                timeLeft -= 0.1;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(trainingTimer);
+                    trainingTimer = null;
+                    
+                    // Mostrar mensaje de tiempo terminado de forma más estable
+                    showStatus('¡Tiempo terminado! Generando nueva letra...', 'warning');
+                    
+                    // Detener entrenamiento con un pequeño delay para que se vea el mensaje
+                    setTimeout(async () => {
+                        if (isTrainingActive) {
+                            await stopTraining();
+                            // Mostrar mensaje final por más tiempo
+                            setTimeout(() => {
+                                showStatus('Puedes iniciar una nueva ronda de entrenamiento', 'info');
+                            }, 1000);
+                        }
+                    }, 1500); // 1.5 segundos para que se vea el mensaje
+                }
+            }, 100);
+        }
+
+        // Manejar errores de imagen
+        document.getElementById('videoFeed').onerror = function() {
+            showStatus('Error al cargar el video. Asegúrate de que la cámara esté iniciada.', 'error');
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('Aplicación lista. Haz clic en "Iniciar Cámara" para comenzar.', 'success');
+        });
+    </script>
+</body>
+</html>
