@@ -4,6 +4,11 @@ Proyecto final (Capstone Project) desarrollado para el programa **[Samsung Innov
 
 El sistema detecta en tiempo real las 26 letras del alfabeto en lengua de señas chilena mediante un enfoque híbrido YOLO + MediaPipe (entrenado con un dataset extraído de Roboflow), desplegado como aplicación web con Django.
 
+## Documentación y Recursos
+
+- 📄 [Reporte Final / Informe Técnico](https://docs.google.com/document/d/1dN7EQcjr5y70B38KbaTYpXllre6nQb_e/edit?usp=sharing&ouid=117052716865855001672&rtpof=true&sd=true)
+- 📊 [Presentación Oficial (Pitch)](https://canva.link/4mxkamsxagt9wfr)
+
 ## Equipo de Desarrollo
 
 - Franco Bernal
