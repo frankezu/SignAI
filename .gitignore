@@ -1,0 +1,72 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# ========================
+# Entornos virtuales
+# ========================
+.venv/
+venv/
+env/
+
+# ========================
+# Django
+# ========================
+db.sqlite3
+db.sqlite3-journal
+*.log
+staticfiles/
+media/
+
+# ========================
+# Jupyter Notebooks
+# ========================
+.ipynb_checkpoints/
+
+# ========================
+# Modelos pre-entrenados (base)
+# ========================
+yolov8n.pt
+yolo11n.pt
+yolov*.pt
+!runs/detect/train/weights/best.pt
+!runs/detect/train/weights/last.pt
+
+# Checkpoints intermedios de entrenamiento
+runs/detect/train/weights/epoch*.pt
+
+# ========================
+# Dataset cache (generado por YOLO)
+# ========================
+dataset/train/labels.cache
+dataset/valid/labels.cache
+dataset/test/labels.cache
+
+# ========================
+# IDE / Editores
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ========================
+# Sistema operativo
+# ========================
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
