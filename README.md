@@ -1,26 +1,27 @@
 # Detector de Lengua de Señas Chilena (LSCh)
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-4.2-092E20?style=flat-square&logo=django&logoColor=white)
+![OpenCV](https://img.shields.io/badge/OpenCV-Vision-5C3EE8?style=flat-square&logo=opencv&logoColor=white)
+![HTML5](https://img.shields.io/badge/HTML5-Frontend-E34F26?style=flat-square&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-Styling-1572B6?style=flat-square&logo=css3&logoColor=white)
+
 Proyecto final (Capstone Project) desarrollado para el programa **[Samsung Innovation Campus](https://innovationcampus.cl/): Inteligencia Artificial** (edición 2025), un bootcamp intensivo de 260 horas enfocado en el ciclo completo de IA. Presentado en las oficinas de Samsung Chile, Santiago.
 
 El sistema detecta en tiempo real las 26 letras del alfabeto en lengua de señas chilena mediante un enfoque híbrido YOLO + MediaPipe (entrenado con un dataset extraído de Roboflow), desplegado como aplicación web con Django.
 
-## Documentación y Recursos
-
-- 📄 [Reporte Final / Informe Técnico](https://docs.google.com/document/d/1dN7EQcjr5y70B38KbaTYpXllre6nQb_e/edit?usp=sharing&ouid=117052716865855001672&rtpof=true&sd=true)
-- 📊 [Presentación Oficial (Pitch)](https://canva.link/4mxkamsxagt9wfr)
-
-## Equipo de Desarrollo
-
-- Franco Bernal
-- Hugo Palomino
-- Ariel Leiva
-- Paula Henríquez
+---
 
 ## Funcionalidades Principales
 
 - **Detección en tiempo real:** Clasificación de las 26 letras (A-Z) a alta velocidad.
 - **Modo Entrenamiento:** Módulo interactivo que propone señas aleatorias al usuario con límite de tiempo y feedback visual para practicar.
 - **Arquitectura Web:** Detección impulsada por visión computacional y empaquetada en una interfaz limpia e intuitiva mediante Django.
+
+## Documentación y Recursos
+
+- 🔗 **[Ver reporte final](https://docs.google.com/document/d/1dN7EQcjr5y70B38KbaTYpXllre6nQb_e/edit?usp=sharing&ouid=117052716865855001672&rtpof=true&sd=true)**
+- 🔗 **[Ver presentación en Canva](https://canva.link/7mzt3recdd5hm7x)** *(Visualizar en pantalla completa para los videos)*
 
 ## Requisitos
 
@@ -68,6 +69,13 @@ SignAI/
 └── run_server.bat              # Script ejecutable de inicio rápido
 ```
 
+## Equipo de Desarrollo
+
+- Franco Bernal
+- Hugo Palomino
+- Ariel Leiva
+- Paula Henríquez
+
 ---
 
-> **Nota sobre este repositorio:** Como uno de los autores originales y desarrollador principal del proyecto, decidí crear este repositorio luego de que el original quedara inactivo (donde se conserva todo mi historial previo de commits). El objetivo de esta nueva versión es realizar una limpieza profunda del código, refactorizar la arquitectura y mantener una versión oficial, estable y ordenada del sistema
+> **Nota sobre este repositorio:** Como uno de los autores originales y desarrollador principal del proyecto, decidí crear este repositorio luego de que el original quedara inactivo (donde se conserva todo mi historial previo de commits). El objetivo de esta nueva versión es realizar una limpieza profunda del código, refactorizar la arquitectura y mantener una versión oficial, estable y ordenada del sistema.
