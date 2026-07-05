@@ -75,7 +75,3 @@ SignAI/
 - Hugo Palomino
 - Ariel Leiva
 - Paula Henríquez
-
----
-
-> **Nota sobre este repositorio:** Como uno de los autores originales y desarrollador principal del proyecto, decidí crear este repositorio luego de que el original quedara inactivo (donde se conserva todo mi historial previo de commits). El objetivo de esta nueva versión es realizar una limpieza profunda del código, refactorizar la arquitectura y mantener una versión oficial, estable y ordenada del sistema.
